@@ -18,6 +18,10 @@
 
 需要 Python 3.9 以上，無外部套件。設定 `LINE_CHANNEL_SECRET` 和 `LINE_CHANNEL_ACCESS_TOKEN` 後執行 `python app.py`。`GET /ready` 可檢查服務狀態；LINE Webhook 設為公開 HTTPS 服務的 `/webhook`。
 
+## 自動部署
+
+推送到 GitHub 的 `main` 分支後，[GitHub Actions](https://github.com/zonawang/line-visit-bot-day1/actions) 會建立 Docker 映像並更新既有的 Cloud Run 服務。Workflow 使用 Google Workload Identity Federation 的短效憑證，不儲存 Google 服務帳號金鑰或 LINE 憑證。Cloud Run 原有的 LINE Secret Manager 環境變數和執行服務帳號會沿用。
+
 ## 修改 FAQ
 
 編輯 `faq.json` 中每項的 `keywords` 與 `answer`。匹配依清單順序進行，因此較具體的問題應排在前面。請只加入已確認且可公開給相關群組的資訊。
