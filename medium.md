@@ -69,7 +69,34 @@ LINE 訊息 → Webhook → 確認要不要回答 → 找到問答內容 → 回
 
 程式目前跑在 Google Cloud Run。收到通知後，它會先用 Channel secret 檢查簽章，確認訊息確實來自 LINE；接著判斷這是私聊，還是群組裡有人真的 `@` 到 Bot。只有符合條件的文字訊息才會往下處理。
 
+在 `app.py` 裡，程式會先排除不是文字的訊息。接下來這幾行，決定私聊可以直接回答，而群組訊息要真的提及 Bot 才回答：
+
+```python
+source_type = (event.get("source") or {}).get("type")
+if source_type == "user":
+    return True
+if source_type not in {"group", "room"}:
+    return False
+mentionees = (message.get("mention") or {}).get("mentionees") or []
+return any(person.get("isSelf") is True for person in mentionees)
+```
+
+最後一行看的就是 LINE 傳來的提及清單：其中有提及 Bot 自己，才讓它接著找答案。
+
 回答則放在 `faq.json`。每個問題都有幾個關鍵字和一段回覆，例如訊息裡有「準備」或「要帶」，就會找到行前準備的提醒。找到答案後，程式用 LINE 的 Reply API 把文字送回原本的對話。這份問答可以直接修改，不需要重寫整個 Bot。
+
+找答案的程式也很短：
+
+```python
+def answer(question: str) -> str:
+    normalized = normalize(question)
+    for item in FAQ["answers"]:
+        if any(normalize(keyword) in normalized for keyword in item["keywords"]):
+            return item["answer"]
+    return FAQ["fallback"]
+```
+
+`normalize()` 會先整理文字的大小寫和空白。接著程式依序比對關鍵字，找到就回覆對應答案；都沒找到時，則回一則說明目前能回答哪些問題的訊息。
 
 程式碼放在 GitHub；推送更新到 `main` 分支後，GitHub Actions 會自動把新版本部署到 Cloud Run。LINE 的密鑰存在 Google Cloud 的 Secret Manager，沒有放進程式碼裡。
 
